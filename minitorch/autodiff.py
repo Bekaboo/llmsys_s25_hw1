@@ -1,7 +1,8 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Iterable, List, Tuple
 
-from typing_extensions import Protocol
+from module import name
 
 
 def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) -> Any:
@@ -119,13 +120,15 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
     # Initialize root node gradient and gradient (derivative) dict
     variable.accumulate_derivative(deriv)
     # Dict recording each node's current gradient
-    derivs: dict[int, Any] = {variable.unique_id: deriv}
+    derivs: dict[int, Any] = defaultdict(lambda: 0)
+    derivs[variable.unique_id] = deriv
 
     # For each variable in the compute graph, accumulate derivative backward to its parents
     for var in iter(topological_sort(variable)):
         d_output = derivs.pop(var.unique_id)
         for parent, parent_grad in var.chain_rule(d_output):
             parent.accumulate_derivative(parent_grad)
+            derivs[variable.unique_id] += parent_grad
 
 
 @dataclass
