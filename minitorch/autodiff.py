@@ -100,11 +100,9 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     Returns:
         Non-constant Variables in topological order starting from the right.
     """
-    # BEGIN ASSIGN1_1
-    # TODO
-    
-    raise NotImplementedError("Task Autodiff Not Implemented Yet")
-    # END ASSIGN1_1
+    yield variable
+    for parent in variable.parents:
+        yield from topological_sort(parent)
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
