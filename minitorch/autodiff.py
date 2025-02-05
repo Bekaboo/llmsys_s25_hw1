@@ -132,7 +132,9 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
     # Initialize root node gradient and gradient (derivative) dict
-    variable.accumulate_derivative(deriv)
+    # `accumulate_derivative()` requires that only leaf variables can have derivatives
+    if variable.is_leaf():
+        variable.accumulate_derivative(deriv)
     # Dict recording each node's current gradient
     derivs: dict[int, Any] = defaultdict(lambda: 0)
     derivs[variable.unique_id] = deriv
@@ -141,8 +143,10 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
     for var in iter(topological_sort(variable)):
         d_output = derivs.pop(var.unique_id)
         for parent, parent_grad in var.chain_rule(d_output):
-            parent.accumulate_derivative(parent_grad)
             derivs[variable.unique_id] += parent_grad
+            # `accumulate_derivative()` requires that only leaf variables can have derivatives
+            if parent.is_leaf():
+                parent.accumulate_derivative(parent_grad)
 
 
 @dataclass
