@@ -141,6 +141,9 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
 
     # For each variable in the compute graph, accumulate derivative backward to its parents
     for var in iter(topological_sort(variable)):
+        # Cannot call `chain_rule()` on leaf nodes (user-created nodes without parents)
+        if var.is_leaf():
+            continue
         d_output = derivs[var.unique_id]
         for parent, parent_grad in var.chain_rule(d_output):
             derivs[parent.unique_id] += parent_grad
