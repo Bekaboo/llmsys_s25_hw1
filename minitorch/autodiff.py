@@ -101,9 +101,23 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     Returns:
         Non-constant Variables in topological order starting from the right.
     """
-    yield variable
-    for parent in variable.parents:
-        yield from topological_sort(parent)
+    visited = set()
+
+    def visit(var: Variable) -> Iterable[Variable]:
+        """
+        Visit variable nodes in topological order
+        """
+        # Don't include constant variable node or include a node twice
+        if var.unique_id in visited or var.is_constant():
+            return
+        visited.add(var.unique_id)
+
+        for parent in var.parents:
+            yield from visit(parent)
+        yield var
+
+    # Test requires us to return the right-most (no out degree) node first
+    return reversed(list(visit(variable)))
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
