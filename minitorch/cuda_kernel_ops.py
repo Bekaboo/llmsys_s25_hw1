@@ -1,18 +1,17 @@
+import ctypes
+import os
 from typing import Callable, Optional
+
+import numpy as np
+import pycuda.autoinit
+import pycuda.driver as drv
+import pycuda.gpuarray as gpuarray
+from pycuda.compiler import SourceModule
 
 from . import operators
 from .tensor import Tensor
-from .tensor_data import (
-    shape_broadcast,
-)
+from .tensor_data import shape_broadcast
 from .tensor_ops import MapProto, TensorOps
-import os
-import ctypes
-import numpy as np
-import pycuda.gpuarray as gpuarray
-import pycuda.driver as drv
-from pycuda.compiler import SourceModule
-import pycuda.autoinit
 
 # Load the shared library
 try:
@@ -24,27 +23,28 @@ datatype = np.float32
 
 # function map
 fn_map = {
-  operators.add: 1,
-  operators.mul: 2,
-  operators.id: 3,
-  operators.neg: 4,
-  operators.lt: 5,
-  operators.eq: 6,
-  operators.sigmoid: 7,
-  operators.relu: 8,
-  operators.relu_back: 9,
-  operators.log: 10,
-  operators.log_back: 11,
-  operators.exp: 12,
-  operators.inv: 13,
-  operators.inv_back: 14,
-  operators.is_close: 15,
-  operators.max: 16,
-  operators.pow: 17, 
-  operators.tanh: 18
+    operators.add: 1,
+    operators.mul: 2,
+    operators.id: 3,
+    operators.neg: 4,
+    operators.lt: 5,
+    operators.eq: 6,
+    operators.sigmoid: 7,
+    operators.relu: 8,
+    operators.relu_back: 9,
+    operators.log: 10,
+    operators.log_back: 11,
+    operators.exp: 12,
+    operators.inv: 13,
+    operators.inv_back: 14,
+    operators.is_close: 15,
+    operators.max: 16,
+    operators.pow: 17,
+    operators.tanh: 18,
 }
 
 THREADS_PER_BLOCK = 32
+
 
 class CudaKernelOps(TensorOps):
     @staticmethod
@@ -56,19 +56,21 @@ class CudaKernelOps(TensorOps):
             if out is None:
                 out = a.zeros(a.shape)
 
+            # fmt: off
             # Define the argument type for the tensorMap function
             lib.tensorMap.argtypes = [
-                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),    # out_storage
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # out_shape
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # out_strides
-                ctypes.c_int,                                                            # out_size
-                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),    # in_storage
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # in_shape
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # in_strides
-                ctypes.c_int,                                                            # in_size
-                ctypes.c_int,                                                            # shape_len
-                ctypes.c_int,                                                            # fn_id
+                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # out_storage
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # out_shape
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # out_strides
+                ctypes.c_int,                                                          # out_size
+                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # in_storage
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # in_shape
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # in_strides
+                ctypes.c_int,                                                          # in_size
+                ctypes.c_int,                                                          # shape_len
+                ctypes.c_int,                                                          # fn_id
             ]
+            # fmt: on
 
             # Define the return type for the tensorMap function
             lib.tensorMap.restype = None
@@ -84,7 +86,7 @@ class CudaKernelOps(TensorOps):
                 a._tensor._strides.astype(np.int32),
                 a.size,
                 len(a.shape),
-                fn_id
+                fn_id,
             )
             return out
 
@@ -98,25 +100,27 @@ class CudaKernelOps(TensorOps):
             c_shape = shape_broadcast(a.shape, b.shape)
             out = a.zeros(c_shape)
 
+            # fmt: off
             # Define the argument type for the tensorZip function
             lib.tensorZip.argtypes = [
-                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),   # out_storage
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # out_shape
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # out_strides
-                ctypes.c_int,                                                            # out_size
-                ctypes.c_int,                                                            # out_shape_size
-                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),   # a_storage
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # a_shape
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # a_strides
-                ctypes.c_int,                                                            # a_size
-                ctypes.c_int,                                                            # a_shape_size
-                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),    # b_storage
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # b_shape
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # b_strides
-                ctypes.c_int,                                                            # b_size
-                ctypes.c_int,                                                            # b_shape_size
-                ctypes.c_int,                                                            # fn_id
+                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # out_storage
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # out_shape
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # out_strides
+                ctypes.c_int,                                                          # out_size
+                ctypes.c_int,                                                          # out_shape_size
+                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # a_storage
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # a_shape
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # a_strides
+                ctypes.c_int,                                                          # a_size
+                ctypes.c_int,                                                          # a_shape_size
+                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # b_storage
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # b_shape
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # b_strides
+                ctypes.c_int,                                                          # b_size
+                ctypes.c_int,                                                          # b_shape_size
+                ctypes.c_int,                                                          # fn_id
             ]
+            # fmt: on
 
             # Define the return type for the tensorZip function
             lib.tensorZip.restype = None
@@ -127,7 +131,7 @@ class CudaKernelOps(TensorOps):
 
             raise NotImplementedError("Zip Function Not Implemented Yet")
             # END ASSIGN1_2
-            
+
             return out
 
         return ret
@@ -143,20 +147,22 @@ class CudaKernelOps(TensorOps):
             out_shape[dim] = 1
             out = a.zeros(tuple(out_shape))
 
+            # fmt: off
             # Define the return type for the tensorReduce function
             lib.tensorReduce.argtypes = [
-                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),    # out_storage
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # out_shape
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # out_strides
-                ctypes.c_int,                                                            # out_size
-                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),    # in_storage
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # in_shape
-                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),    # in_strides
-                ctypes.c_int,                                                            # reduce_dim
-                ctypes.c_double,                                                         # reduce_value
-                ctypes.c_int,                                                            # shape_len
-                ctypes.c_int,                                                            # fn_id
+                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # out_storage
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # out_shape
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # out_strides
+                ctypes.c_int,                                                          # out_size
+                np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # in_storage
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # in_shape
+                np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # in_strides
+                ctypes.c_int,                                                          # reduce_dim
+                ctypes.c_double,                                                       # reduce_value
+                ctypes.c_int,                                                          # shape_len
+                ctypes.c_int,                                                          # fn_id
             ]
+            # fmt: on
 
             # Define the return type for the tensorReduce function
             lib.tensorReduce.restype = None
@@ -164,10 +170,10 @@ class CudaKernelOps(TensorOps):
             # BEGIN ASSIGN1_2
             # TODO
             # 1. Call the tensorReduce function implemented in CUDA
-            
+
             raise NotImplementedError("Reduce Function Not Implemented Yet")
             # END ASSIGN1_2
-            
+
             return out
 
         return ret
@@ -200,24 +206,26 @@ class CudaKernelOps(TensorOps):
             a = a.contiguous().view(np.prod(a.shape[:-2]), a.shape[-2], a.shape[-1])
         if len(b.shape) > 3:
             b = b.contiguous().view(np.prod(b.shape[:-2]), b.shape[-2], b.shape[-1])
-        
+
         assert a.shape[0] == b.shape[0]
         assert a.shape[0] == out.shape[0]
 
+        # fmt: off
         lib.MatrixMultiply.argtypes = [
-            np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),   # out_storage
-            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),     # out_shape
-            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),     # out_strides
-            np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),   # a_storage
-            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),     # a_shape
-            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),     # a_strides
-            np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),   # b_storage
-            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),     # b_shape
-            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),     # b_strides
-            ctypes.c_int,                                                             # batch_size
-            ctypes.c_int,                                                             # out_shape[1], m
-            ctypes.c_int                                                              # out_shape[2], p
+            np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # out_storage
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # out_shape
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # out_strides
+            np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # a_storage
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # a_shape
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # a_strides
+            np.ctypeslib.ndpointer(dtype=datatype, ndim=1, flags='C_CONTIGUOUS'),  # b_storage
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # b_shape
+            np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),  # b_strides
+            ctypes.c_int,                                                          # batch_size
+            ctypes.c_int,                                                          # out_shape[1], m
+            ctypes.c_int                                                           # out_shape[2], p
         ]
+        # fmt: on
 
         # Define the return type for the tensorZip function
         lib.MatrixMultiply.restype = None
@@ -235,7 +243,7 @@ class CudaKernelOps(TensorOps):
 
         raise NotImplementedError("Matrix Multiply Function Not Implemented Yet")
         # END ASSIGN1_2
-        
+
         # Undo 3d if we added it.
         if both_2d:
             out = out.view(out.shape[1], out.shape[2])
