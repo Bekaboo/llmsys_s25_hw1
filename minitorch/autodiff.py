@@ -143,7 +143,7 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
     for var in iter(topological_sort(variable)):
         d_output = derivs.pop(var.unique_id)
         for parent, parent_grad in var.chain_rule(d_output):
-            derivs[variable.unique_id] += parent_grad
+            derivs[parent.unique_id] += parent_grad
             # `accumulate_derivative()` requires that only leaf variables can have derivatives
             if parent.is_leaf():
                 parent.accumulate_derivative(parent_grad)
