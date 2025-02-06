@@ -344,7 +344,22 @@ __global__ void mapKernel(float *out, int *out_shape, int *out_strides,
     // 6. Apply the unary function to the input element and write the output to
     // the out memory
 
-    assert(false && "Not Implemented");
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= out_size) {
+        return;
+    }
+
+    // Convert linear index to multidimensional index
+    to_index(idx, out_shape, shape_size, out_index);
+    broadcast_index(out_index, out_shape, in_shape, shape_size, in_index);
+
+    // Calculate positions in input and output arrays
+    int in_position = index_to_position(in_index, in_strides, shape_size);
+    int out_position = index_to_position(out_index, out_strides, shape_size);
+
+    // Get input value and apply function
+    float x = in_storage[in_position];
+    out[out_position] = fn(fn_id, x);
     /// END ASSIGN1_2
 }
 
