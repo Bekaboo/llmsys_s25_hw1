@@ -425,18 +425,21 @@ __global__ void reduceKernel(float *out, int *out_shape, int *out_strides,
         in_index[i] = out_index[i];
     }
 
-    // Initialize result with first element
-    in_index[reduce_dim] = 0;
-    int first_position = index_to_position(in_index, out_strides, shape_size);
-    float result = a_storage[first_position];
+    // Initialize result with reduce_value
+    float result = reduce_value;
 
     // Reduce along the specified dimension
-    for (int i = 1; i < out_shape[reduce_dim]; i++) {
+    for (int i = 0; i < a_shape[reduce_dim]; i++) {
         in_index[reduce_dim] = i;
-        int curr_position =
-            index_to_position(in_index, out_strides, shape_size);
+        int curr_position = index_to_position(in_index, a_strides, shape_size);
         float curr_val = a_storage[curr_position];
-        result = fn(fn_id, result, curr_val);
+
+        // For the first element, just set result to curr_val
+        if (i == 0) {
+            result = curr_val;
+        } else {
+            result = fn(fn_id, result, curr_val);
+        }
     }
 
     // Write result
