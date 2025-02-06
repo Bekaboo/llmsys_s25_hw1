@@ -89,7 +89,8 @@ class Network(minitorch.Module):
         # TODO
         # 1. Construct two linear layers: the first one is embedding_dim * hidden_dim, the second one is hidden_dim * 1
 
-        raise NotImplementedError
+        self.layer1 = Linear(embedding_dim, hidden_dim)
+        self.layer2 = Linear(hidden_dim, 1)
         # END ASSIGN1_3
 
     def forward(self, embeddings):
@@ -106,7 +107,15 @@ class Network(minitorch.Module):
         # 5. Apply sigmoid and reshape to (batch)
         # HINT: You can use minitorch.dropout for dropout, and minitorch.tensor.relu for ReLU
 
-        raise NotImplementedError
+        avg_embeddings = embeddings.sum(1) / embeddings.shape[1]
+        avg_embeddings = avg_embeddings.view(
+            embeddings.shape[0], -1
+        )  # reshape to [batch x embedding_dim]
+        hidden = self.layer1.forward(avg_embeddings)
+        hidden = hidden.relu()
+        hidden = minitorch.dropout(hidden, self.dropout_prob)
+        output = self.layer2.forward(hidden)
+        return output.sigmoid().view(output.shape[0])
 
         # END ASSIGN1_3
 
