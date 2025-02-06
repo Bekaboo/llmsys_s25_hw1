@@ -34,7 +34,9 @@ class Linear(minitorch.Module):
         # 3. Set self.out_size to be out_size
         # HINT: make sure to use the RParam function
 
-        raise NotImplementedError
+        self.weights = RParam(in_size, out_size)
+        self.bias = RParam(out_size)
+        self.out_size = out_size
 
         # END ASSIGN1_3
 
@@ -49,7 +51,13 @@ class Linear(minitorch.Module):
         # 4. Add self.bias
         # HINT: You can use the view function of minitorch.tensor for reshape
 
-        raise NotImplementedError
+        x = x.view(batch, in_size)  # reshape
+        weights = self.weights.value.view(in_size, self.out_size)
+
+        out = x @ weights
+        out = out.view(batch, self.out_size) + self.bias.value
+
+        return out
 
         # END ASSIGN1_3
 
