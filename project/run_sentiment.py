@@ -107,10 +107,15 @@ class Network(minitorch.Module):
         # 5. Apply sigmoid and reshape to (batch)
         # HINT: You can use minitorch.dropout for dropout, and minitorch.tensor.relu for ReLU
 
-        avg_embeddings = embeddings.sum(1) / embeddings.shape[1]
+        avg_embeddings = (
+            embeddings.sum(1) / embeddings.shape[1]
+        )  # shape: [batch x 1 x embedding_dim]
+
+        # Reshape to remove the middle dimension
         avg_embeddings = avg_embeddings.view(
-            embeddings.shape[0], -1
-        )  # reshape to [batch x embedding_dim]
+            embeddings.shape[0], embeddings.shape[2]
+        )  # shape: [batch x embedding_dim]
+
         hidden = self.layer1.forward(avg_embeddings)
         hidden = hidden.relu()
         hidden = minitorch.dropout(hidden, self.dropout_prob)
