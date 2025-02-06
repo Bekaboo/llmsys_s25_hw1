@@ -501,7 +501,24 @@ __global__ void zipKernel(float *out, int *out_shape, int *out_strides,
     // 8. Apply the binary function to the input elements in a_array & b_array
     // and write the output to the out memory
 
-    assert(false && "Not Implemented");
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= out_size) {
+        return;
+    }
+
+    to_index(idx, out_shape, shape_size, out_index);
+    broadcast_index(out_index, out_shape, a_shape, shape_size, a_index);
+    broadcast_index(out_index, out_shape, b_shape, shape_size, b_index);
+
+    int a_position = index_to_position(a_index, a_strides, shape_size);
+    int b_position = index_to_position(b_index, b_strides, shape_size);
+
+    float a_val = a_storage[a_position];
+    float b_val = b_storage[b_position];
+
+    // Apply binary function and write to output
+    int out_position = index_to_position(out_index, out_strides, shape_size);
+    out[out_position] = fn(fn_id, a_val, b_val);
     /// END ASSIGN1_2
 }
 
