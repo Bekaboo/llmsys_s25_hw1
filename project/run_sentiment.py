@@ -193,6 +193,7 @@ class SentenceSentimentTrain:
         losses = []
         train_accuracy = []
         validation_accuracy = []
+
         for epoch in range(1, max_epochs + 1):
             total_loss = 0.0
             n_batches = 0
@@ -215,11 +216,34 @@ class SentenceSentimentTrain:
                 # 5. Call backward function of the loss
                 # 6. Use Optimizer to take a gradient step
 
-                raise NotImplementedError
+                # Get batch data
+                batch_X = X_train[example_num : example_num + batch_size]
+                batch_y = y_train[example_num : example_num + batch_size]
+
+                # Create tensors with CUDA backend
+                x = minitorch.tensor(batch_X, backend=BACKEND)
+                y = minitorch.tensor(batch_y, backend=BACKEND)
+
+                # Set requires_grad
+                x.requires_grad_(True)
+                y.requires_grad_(True)
+
+                # Forward pass
+                out = model.forward(x)
+
+                # Calculate Binary Cross Entropy Loss
+                # BCE = -y * log(out) - (1-y) * log(1-out)
+                loss = -(y * out.log() + (1 - y) * (1 - out).log()).sum()
+
+                # Backward pass
+                loss.backward()
+
+                # Optimizer step
+                optim.step()
                 # END ASSIGN1_4
 
                 # Save training results
-                train_predictions += get_predictions_array(y, out)
+                train_predictions += get_predictions_array(batch_y, out)
                 total_loss += loss[0]
                 n_batches += 1
 
@@ -236,7 +260,16 @@ class SentenceSentimentTrain:
                 # 3. Obtain validation predictions using the get_predictions_array function, and add to the validation_predictions list
                 # 4. Obtain the validation accuracy using the get_accuracy function, and add to the validation_accuracy list
 
-                raise NotImplementedError
+                # Create validation tensors
+                x = minitorch.tensor(X_val, backend=BACKEND)
+                y = minitorch.tensor(y_val, backend=BACKEND)
+
+                # Get model predictions
+                out = model.forward(x)
+
+                # Get predictions and accuracy
+                validation_predictions = get_predictions_array(y_val, out)
+                validation_accuracy.append(get_accuracy(validation_predictions))
 
                 # END ASSIGN1_4
 
