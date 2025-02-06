@@ -350,8 +350,9 @@ __global__ void mapKernel(float *out, int *out_shape, int *out_strides,
     }
 
     // Convert linear index to multidimensional index
-    to_index(idx, out_shape, shape_size, out_index);
-    broadcast_index(out_index, out_shape, in_shape, shape_size, in_index);
+    to_index(idx, out_shape, out_index, shape_size);
+    broadcast_index(out_index, out_shape, in_shape, in_index, shape_size,
+                    shape_size);
 
     // Calculate positions in input and output arrays
     int in_position = index_to_position(in_index, in_strides, shape_size);
@@ -416,7 +417,7 @@ __global__ void reduceKernel(float *out, int *out_shape, int *out_strides,
         return;
     }
 
-    to_index(idx, out_shape, shape_size, out_index);
+    to_index(idx, out_shape, out_index, shape_size);
 
     // Initialize in_index as copy of out_index
     int in_index[MAX_DIMS];
@@ -426,14 +427,15 @@ __global__ void reduceKernel(float *out, int *out_shape, int *out_strides,
 
     // Initialize result with first element
     in_index[reduce_dim] = 0;
-    int first_position = index_to_position(in_index, in_strides, shape_size);
-    float result = in_storage[first_position];
+    int first_position = index_to_position(in_index, out_strides, shape_size);
+    float result = a_storage[first_position];
 
     // Reduce along the specified dimension
-    for (int i = 1; i < in_shape[reduce_dim]; i++) {
+    for (int i = 1; i < out_shape[reduce_dim]; i++) {
         in_index[reduce_dim] = i;
-        int curr_position = index_to_position(in_index, in_strides, shape_size);
-        float curr_val = in_storage[curr_position];
+        int curr_position =
+            index_to_position(in_index, out_strides, shape_size);
+        float curr_val = a_storage[curr_position];
         result = fn(fn_id, result, curr_val);
     }
 
@@ -506,18 +508,21 @@ __global__ void zipKernel(float *out, int *out_shape, int *out_strides,
         return;
     }
 
-    to_index(idx, out_shape, shape_size, out_index);
-    broadcast_index(out_index, out_shape, a_shape, shape_size, a_index);
-    broadcast_index(out_index, out_shape, b_shape, shape_size, b_index);
+    to_index(idx, out_shape, out_index, out_shape_size);
+    broadcast_index(out_index, out_shape, a_shape, a_index, out_shape_size,
+                    a_shape_size);
+    broadcast_index(out_index, out_shape, b_shape, b_index, out_shape_size,
+                    b_shape_size);
 
-    int a_position = index_to_position(a_index, a_strides, shape_size);
-    int b_position = index_to_position(b_index, b_strides, shape_size);
+    int a_position = index_to_position(a_index, a_strides, a_shape_size);
+    int b_position = index_to_position(b_index, b_strides, b_shape_size);
 
     float a_val = a_storage[a_position];
     float b_val = b_storage[b_position];
 
     // Apply binary function and write to output
-    int out_position = index_to_position(out_index, out_strides, shape_size);
+    int out_position =
+        index_to_position(out_index, out_strides, out_shape_size);
     out[out_position] = fn(fn_id, a_val, b_val);
     /// END ASSIGN1_2
 }
