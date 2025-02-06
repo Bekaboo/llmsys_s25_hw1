@@ -218,9 +218,10 @@ __global__ void MatrixMultiplyKernel(float *out, const int *out_shape,
 
     // In each block, we will compute a batch of the output matrix
     // All the threads in the block will work together to compute this batch
-    int batch = blockIdx.z;
+    int batch = blockIdx.z; // batch index
     int a_batch_stride = a_shape[0] > 1 ? a_strides[0] : 0;
     int b_batch_stride = b_shape[0] > 1 ? b_strides[0] : 0;
+    int out_batch_stride = out_shape[0] > 1 ? out_strides[0] : 0;
 
     /// BEGIN ASSIGN1_2
     /// TODO
@@ -237,7 +238,61 @@ __global__ void MatrixMultiplyKernel(float *out, const int *out_shape,
     // tile for (row, col)
     // 7. Write the output to global memory
 
-    assert(false && "Not Implemented");
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+    int col = blockIdx.y * blockDim.y + threadIdx.y;
+
+    int m = out_shape[1]; // rows of output/A
+    int n = a_shape[2];   // cols of A/rows of B
+    int p = out_shape[2]; // cols of output/B
+
+    // Check if thread is within matrix bounds
+    if (row >= m || col >= p) {
+        return;
+    }
+
+    // Initialize accumulator
+    float sum = 0.0f;
+
+    // Loop over tiles
+    int num_tiles = (n + TILE - 1) / TILE;
+    for (int tile_idx = 0; tile_idx < num_tiles; ++tile_idx) {
+        // Load A tile
+        int a_tile_col = tile_idx * TILE + threadIdx.y;
+        if (row < m && a_tile_col < n) {
+            a_shared[threadIdx.x][threadIdx.y] =
+                a_storage[batch * a_batch_stride + row * a_strides[1] +
+                          a_tile_col * a_strides[2]];
+        } else {
+            a_shared[threadIdx.x][threadIdx.y] = 0.0f;
+        }
+
+        // Load B tile
+        int b_tile_row = tile_idx * TILE + threadIdx.x;
+        if (b_tile_row < n && col < p) {
+            b_shared[threadIdx.x][threadIdx.y] =
+                b_storage[batch * b_batch_stride + b_tile_row * b_strides[1] +
+                          col * b_strides[2]];
+        } else {
+            b_shared[threadIdx.x][threadIdx.y] = 0.0f;
+        }
+
+        __syncthreads();
+
+        // Compute partial dot product for this tile_idx
+        for (int k = 0; k < TILE; ++k) {
+            if (tile_idx * TILE + k < n) {
+                sum += a_shared[threadIdx.x][k] * b_shared[k][threadIdx.y];
+            }
+        }
+
+        __syncthreads();
+    }
+
+    // Write result to global memory
+    if (row < m && col < p) {
+        out[batch * out_batch_stride + row * out_strides[1] +
+            col * out_strides[2]] = sum;
+    }
     /// END ASSIGN1_2
 }
 
