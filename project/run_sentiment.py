@@ -221,6 +221,8 @@ class SentenceSentimentTrain:
                 batch_y = y_train[example_num : example_num + batch_size]
 
                 # Create tensors with CUDA backend
+                # x shape: (10, 52, 50)
+                # y shape: (10,) consists of 0s and 1s
                 x = minitorch.tensor(batch_X, backend=BACKEND)
                 y = minitorch.tensor(batch_y, backend=BACKEND)
 
@@ -233,7 +235,9 @@ class SentenceSentimentTrain:
 
                 # Calculate Binary Cross Entropy Loss
                 # BCE = -y * log(out) - (1-y) * log(1-out)
-                loss = -(y * out.log() + (1 - y) * (1 - out).log()).sum()
+                # Fixes: Operator "-" not supported for types "Literal[1]" and "Tensor"
+                ones = minitorch.ones(y.shape)
+                loss = -(y * out.log() + (ones - y) * (ones - out).log()).sum()
 
                 # Backward pass
                 loss.backward()
